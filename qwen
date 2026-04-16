@@ -7,7 +7,7 @@ MODEL=""
 
 # Provider-specific default models (can be set via env or fallback)
 DEFAULT_OPENAI_MODEL="${OPENAI_MODEL:-gpt-5.1-codex}"
-DEFAULT_OPENROUTER_MODEL="${OPENROUTER_MODEL:-openai/gpt-5.1-codex}"
+DEFAULT_OPENROUTER_MODEL="${OPENROUTER_MODEL:-openai/gpt-oss-120b:free}"
 
 # Help message
 if [[ "$1" == "--help" || "$1" == "-h" ]]; then
@@ -103,7 +103,6 @@ elif [[ "$PROVIDER" == "openai" ]]; then
 else
   docker run --rm -it \
     -v "$(realpath "$FOLDER"):/app" \
-    -v "/home/siddthartha/.qwen:/home/node/.qwen" \
     --user 1000:1000 \
     -w "/app" \
     "$IMAGE_NAME"
