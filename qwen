@@ -1,0 +1,110 @@
+#!/bin/bash
+
+# Default values
+PROVIDER=""
+FOLDER="$(pwd)"
+MODEL=""
+
+# Provider-specific default models (can be set via env or fallback)
+DEFAULT_OPENAI_MODEL="${OPENAI_MODEL:-gpt-5.1-codex}"
+DEFAULT_OPENROUTER_MODEL="${OPENROUTER_MODEL:-openai/gpt-5.1-codex}"
+
+# Help message
+if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+  echo "Usage: $0 [folder] [--provider openai|openrouter] [--model model_name]"
+  echo "If --provider is omitted, interactive auth will be used."
+  exit 0
+fi
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --provider)
+      shift
+      if [[ -n "$1" ]]; then
+        PROVIDER="$1"
+        shift
+      else
+        echo "Error: --provider requires an argument (openai or openrouter)."
+        exit 1
+      fi
+      ;;
+    --model)
+      shift
+      if [[ -n "$1" ]]; then
+        MODEL="$1"
+        shift
+      else
+        echo "Error: --model requires an argument."
+        exit 1
+      fi
+      ;;
+    --*)
+      echo "Unknown option: $1"
+      exit 1
+      ;;
+    *)
+      # Assume positional folder argument if not already set
+      if [[ "$FOLDER" == "$(pwd)" ]]; then
+        FOLDER="$1"
+        shift
+      else
+        shift
+      fi
+      ;;
+  esac
+done
+
+# Set model default if not overridden
+if [[ -z "$MODEL" ]]; then
+  if [[ "$PROVIDER" == "openrouter" ]]; then
+    MODEL="$DEFAULT_OPENROUTER_MODEL"
+  else
+    MODEL="$DEFAULT_OPENAI_MODEL"
+  fi
+fi
+
+IMAGE_NAME="ghcr.io/qwenlm/qwen-code:0.14.5"
+
+# Provider-specific env vars and docker run
+if [[ "$PROVIDER" == "openrouter" ]]; then
+  export OPENROUTER_API_KEY=""
+  export OPENROUTER_BASE_URL="https://openrouter.ai/api/v1"
+  export OPENROUTER_MODEL="$MODEL"
+fi
+if [[ "$PROVIDER" == "openai" ]]; then
+  export OPENAI_API_KEY=""
+  export OPENAI_BASE_URL="https://api.openai.com/v1"
+  export OPENAI_MODEL="$MODEL"
+fi
+
+if ! docker image inspect "$IMAGE_NAME" > /dev/null 2>&1; then
+  docker pull "$IMAGE_NAME"
+fi
+
+if [[ "$PROVIDER" == "openrouter" ]]; then
+  docker run --rm -it \
+    -v "$(realpath "$FOLDER"):/app" \
+    --user 1000:1000 \
+    -w "/app" \
+    -e OPENAI_API_KEY="$OPENROUTER_API_KEY" \
+    -e OPENAI_BASE_URL="$OPENROUTER_BASE_URL" \
+    -e OPENAI_MODEL="$OPENROUTER_MODEL" \
+    "$IMAGE_NAME"
+elif [[ "$PROVIDER" == "openai" ]]; then
+  docker run --rm -it \
+    -v "$(realpath "$FOLDER"):/app" \
+    --user 1000:1000 \
+    -w "/app" \
+    -e OPENAI_API_KEY="$OPENAI_API_KEY" \
+    -e OPENAI_BASE_URL="$OPENAI_BASE_URL" \
+    -e OPENAI_MODEL="$OPENAI_MODEL" \
+    "$IMAGE_NAME"
+else
+  docker run --rm -it \
+    -v "$(realpath "$FOLDER"):/app" \
+    -v "/home/siddthartha/.qwen:/home/node/.qwen" \
+    --user 1000:1000 \
+    -w "/app" \
+    "$IMAGE_NAME"
+fi
