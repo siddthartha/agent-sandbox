@@ -12,4 +12,4 @@ docker run -it --rm \
   -w "/app" \
   --entrypoint "/bin/sh" \
   ghcr.io/anomalyco/opencode:latest \
-  -c 'apk add git docker-cli && exec opencode'
+  -c 'apk add git docker-cli docker-compose && exec opencode'
