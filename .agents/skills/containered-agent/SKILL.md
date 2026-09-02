@@ -34,4 +34,4 @@ IF YES THEN FOLLOW ALL THIS:
 
 # COMMON rules
 
-- IF shell task is potentially heavy or informative like logs, build, run, tests and so on -- ALWAYS run it WITH tail-ed "monitor"
+- IF shell task is potentially heavy or informative like LOGs, BUILDs, RUN, TEST and so on -- ALWAYS run it WITH a tail-ed monitor so i can see output

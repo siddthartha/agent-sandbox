@@ -8,6 +8,7 @@ RUN apk add --no-cache \
         git \
         openssh-client \
         docker-cli \
+        docker-cli-buildx \
         docker-cli-compose
 
 # Trust GitHub's SSH host keys system-wide so git over ssh works without a

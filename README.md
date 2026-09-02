@@ -1,67 +1,110 @@
-# Wrapper README
+# agent-sandbox
 
-## Overview
-The wrapper script simplifies running the Qwen Code Docker image (`ghcr.io/qwenlm/qwen-code:0.14.5`) with optional AI provider configuration (OpenAI or OpenRouter). It automatically handles Docker image pulling, environment variable setup, and volume mounting for the target folder.
+Run a coding agent in a throwaway docker container against the current
+directory, as your own user, with git, ssh and docker available inside.
 
-## Prerequisites
-- Docker service installed and running.
-- (Optional) API keys for OpenAI or OpenRouter if you intend to use those providers.
+- The agent only sees the directory you start it from (mounted at
+  `/workspace`) and its own config from your home.
+- Files it writes are owned by you: the images are built with your uid/gid.
+- It can drive project containers through the host docker socket.
+- Nothing is installed on the host except docker.
 
-## Usage
+## Build
+
 ```bash
-./qwen [folder] [--provider openai|openrouter] [--model model_name]
+./build.sh            # claude-sandbox, opencode-sandbox and the docker MCP image
+./build.sh opencode   # just one target
 ```
 
-### Options
-- `folder` – Path to the directory you want to mount inside the container (default: **current working directory**).
-- `--provider openai|openrouter` – Choose the AI provider. If omitted, the container runs without provider-specific credentials.
-- `--model model_name` – Override the default model for the chosen provider.
+Rebuild after any change to a Dockerfile or a launcher.
 
-### Defaults
-- **OpenAI model:** `gpt-5.1-codex` (can be overridden by `OPENAI_MODEL` env var)
-- **OpenRouter model:** `openai/gpt-oss-120b:free` (can be overridden by `OPENROUTER_MODEL` env var)
+## Claude Code
 
-## Environment Variables
-Set the following variables before running the script if you use a provider:
-
-| Variable | Description |
-|----------|-------------|
-| `OPENAI_API_KEY` | Your OpenAI API key (used for both OpenAI and OpenRouter when the respective provider is selected). |
-| `OPENAI_BASE_URL` | Base URL for the OpenAI API (default: `https://api.openai.com/v1`). |
-| `OPENAI_MODEL` | Model name for OpenAI (overridden by `--model`). |
-| `OPENROUTER_API_KEY` | Your OpenRouter API key (same key as OpenAI). |
-| `OPENROUTER_BASE_URL` | Base URL for OpenRouter API (default: `https://openrouter.ai/api/v1`). |
-| `OPENROUTER_MODEL` | Model name for OpenRouter (overridden by `--model`). |
-
-## Examples
-
-### Run with default settings (no provider, current folder is a project root)
 ```bash
-./qwen
+cd ~/work/some-project
+~/work/agent-sandbox/claude                    # interactive session
+~/work/agent-sandbox/claude --continue         # pick up the last session here
+~/work/agent-sandbox/claude --resume <id>      # a specific one
+~/work/agent-sandbox/claude -p "what does build.sh do"
 ```
 
-### Run on a specific folder with OpenAI
+Config, sessions and memory come from `~/.claude` and `~/.claude.json`.
+
+## OpenCode
+
 ```bash
-export OPENAI_API_KEY="sk-..."
-./qwen /path/to/project --provider openai
+cd ~/work/some-project
+~/work/agent-sandbox/opencode                  # interactive TUI
+~/work/agent-sandbox/opencode run "add a make target that runs the tests"
+~/work/agent-sandbox/opencode --model openai/gpt-5.1-codex
 ```
 
-### Run with a custom OpenRouter model
-```bash
-export OPENROUTER_API_KEY="sk-..."
-./qwen . --provider openrouter --model my/custom-model
+Config comes from `~/.opencode`, auth and sessions from
+`~/.local/share/opencode`.
+
+Every argument goes to the agent CLI unchanged. Put this directory on `PATH`
+to call them as `claude` and `opencode`.
+
+## What the container gets
+
+| Host | Container | Mode |
+|---|---|---|
+| current directory | `/workspace` | rw |
+| `~/.gitconfig` | `~/.gitconfig` | ro |
+| ssh-agent socket | `/tmp/ssh-agent.sock` | no keys are copied |
+| `~/.ssh/known_hosts` | `~/.ssh/known_hosts` | ro, only if it exists |
+| `/var/run/docker.sock` | same path | docker CLI and compose |
+
+GitHub's ssh host keys are pinned in the images, so `git push` works without
+a known_hosts prompt.
+
+`.mcp.json` registers the docker MCP server for Claude Code: it runs the
+`mcp-server-docker` image with the socket mounted, so the agent lists, starts
+and inspects containers through tools instead of shell. `./build.sh` builds
+that image too, from `github.com/ckreiling/mcp-server-docker`. Claude Code
+asks once per project before using servers from `.mcp.json`.
+
+## Qwen Code
+
+`qwen` is the older wrapper around `ghcr.io/qwenlm/qwen-code`, documented in
+`README-qwen-old.md`. Moving it to the same setup is in `TODO.md`.
+
+## Agent configuration: one AGENTS.md for all
+
+Instructions, subagents and skills exist once and reach every agent through
+symlinks, so nothing is copied per tool:
+
+```
+AGENTS.md                         instructions, the only real copy
+CLAUDE.md -> AGENTS.md            Claude Code
+QWEN.md   -> AGENTS.md            Qwen Code
+.agents/agents/<name>.md          subagents
+.agents/skills/<name>/SKILL.md    skills
+.claude/{agents,skills}   -> ../.agents/...
+.opencode/agents          -> ../.agents/agents
+.qwen/{agents,skills}     -> ../.agents/...
 ```
 
-## How It Works
-1. **Argument parsing** – Determines the target folder, provider, and model.
-2. **Model selection** – Uses provider‑specific defaults unless a model is explicitly supplied.
-3. **Docker image handling** – Pulls `ghcr.io/qwenlm/qwen-code:0.14.5` if not already present.
-4. **Container execution** – Runs the image with the appropriate environment variables and mounts the chosen folder at `/app` inside the container.
+OpenCode and Codex read `AGENTS.md` and `.agents/skills` natively, so they
+need no links for those. To add a skill or subagent, create it under
+`.agents/` with only `name` and `description` in the frontmatter; the `tools`
+and `model` fields differ per agent and belong in each agent's own config.
+Per-agent table and rationale: `unified-agents-directory-structure.md`.
 
-## License
-This wrapper script is provided under the MIT License. See the LICENSE file for details.
+## The containered-agent skill
 
----
+`.agents/skills/containered-agent` tells an agent how to work from inside the
+sandbox: recognise that it runs in a container, learn the project's layout and
+deploy files, find the project's own containers through the docker socket and
+run builds and tests in those rather than in the sandbox, keep file ownership
+as it found it, and touch protected branches only through a pull request.
 
-Feel free to modify the script to suit your workflow or add additional provider support as needed.
+Use it at the start of a session:
 
+```
+/containered-agent      # Claude Code; other agents load it by description or on request
+```
+
+In this repo it is picked up automatically. For other projects, copy or link
+it to `~/.claude/skills/` (Claude Code) or `~/.agents/skills/` (OpenCode,
+Codex); both are read from your home in every project.
