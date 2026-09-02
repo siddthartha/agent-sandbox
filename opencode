@@ -1,15 +1,33 @@
 #!/bin/bash
 
+# OpenCode keeps its config in ~/.opencode on the host and its state (auth,
+# sessions) in ~/.local/share/opencode. Create them first: docker creates a
+# missing bind-mount source as root, unwritable for the container user.
+mkdir -p "$HOME/.opencode" "$HOME/.local/share/opencode"
+
+# Share the host's trusted ssh hosts read-only: GitHub's keys are baked into
+# the image (opencode.Dockerfile), this covers every other server the host
+# already trusts. Guarded, because bind-mounting a missing file makes docker
+# create a directory at that path on the host and break ssh there.
+extra_mounts=()
+if [ -f "$HOME/.ssh/known_hosts" ]; then
+  extra_mounts+=(-v "$HOME/.ssh/known_hosts:/home/opencode/.ssh/known_hosts:ro")
+fi
+
+# Run as the host user (not root) so files written to /workspace keep host
+# ownership. An explicit uid:gid drops the image's supplementary groups, so
+# the `docker` group from opencode.Dockerfile is re-added for socket access.
+# Arguments are passed through to the opencode CLI.
 docker run -it --rm \
-  -v "$(pwd):/app" \
-  -v "$HOME/.opencode:/root/.config/opencode" \
-  -v "$HOME/.local/share/opencode:/root/.local/share/opencode" \
-  -v "$HOME/.gitconfig:/root/.gitconfig:ro" \
+  --user "$(id -u):$(id -g)" \
+  --group-add docker \
+  -v "$(pwd):/workspace" \
+  -v "$HOME/.opencode:/home/opencode/.config/opencode" \
+  -v "$HOME/.local/share/opencode:/home/opencode/.local/share/opencode" \
+  -v "$HOME/.gitconfig:/home/opencode/.gitconfig:ro" \
   -v "$SSH_AUTH_SOCK:/tmp/ssh-agent.sock" \
   -v "/var/run/docker.sock:/var/run/docker.sock" \
-  -v "$HOME/.cache/opencode-apk:/var/cache/apk" \
+  "${extra_mounts[@]}" \
   -e SSH_AUTH_SOCK=/tmp/ssh-agent.sock \
-  -w "/app" \
-  --entrypoint "/bin/sh" \
-  ghcr.io/anomalyco/opencode:latest \
-  -c 'apk add git docker-cli docker-compose && exec opencode'
+  -w /workspace \
+  opencode-sandbox "$@"

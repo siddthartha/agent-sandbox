@@ -12,6 +12,7 @@ fi
 # Run as the host user (not root) so files written to /workspace keep host
 # ownership. An explicit uid:gid drops the image's supplementary groups, so
 # the `docker` group from claude.Dockerfile is re-added for socket access.
+# Arguments are passed through to the claude CLI.
 docker run -it --rm \
   --user "$(id -u):$(id -g)" \
   --group-add docker \
@@ -24,4 +25,4 @@ docker run -it --rm \
   "${extra_mounts[@]}" \
   -e SSH_AUTH_SOCK=/tmp/ssh-agent.sock \
   -w /workspace \
-  claude-sandbox
+  claude-sandbox "$@"

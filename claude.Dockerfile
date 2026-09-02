@@ -57,4 +57,4 @@ RUN groupmod -o -g "${HOST_GID}" node \
 ENV DISABLE_AUTOUPDATER=1
 
 WORKDIR /workspace
-CMD ["claude"]
+ENTRYPOINT ["claude"]
