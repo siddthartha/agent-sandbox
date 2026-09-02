@@ -20,7 +20,8 @@ IF YES THEN FOLLOW ALL THIS:
 - DETECT IF current project's containers are already running inside local docker using `mcp-server-docker`
 - ALL specific projects toolchain execution calls (tests or builds and so on) execute in corresponding container (which contains needed part of project and has its tools)
 - IF needed local container is already running do not recreate it without a reason -- just execute inside of it
-- DETECT if you have any connected MCPs for accessing project's infrastructure (determine are they corresponding to project or related to some other scopes)
+- DETECT if you have any connected MCPs for accessing project's infrastructure (DETERMINE are their instances corresponding to this project or related to some other scopes)
+- NEVER TOUCH PRODUCTION environment
 - DETECT UID:GID of files in workspace, remember and KEEP IT SAME after any edits or on files creation IF it is different from your current user
 
 ## Repository rules
@@ -31,6 +32,13 @@ IF YES THEN FOLLOW ALL THIS:
 - Use corresponding mcp for repository provider (mcp github for github) to find a current repository, branch, observe state of CI/CD
 - DETECT branching model and protected branches
 - DO NOT touch protected branches -- only with opening PR via MCP
+
+## Headless Web Browser client use rules
+
+- you have Playwright MCP container which has access to all docker compose networks and internet access (as far as host system has it)
+- you can use it for testing or e2e checks of frontend or any other tasks if browser needed
+- you can use Chromium (default) and WebKit engines
+- IF project has a frontend web service -- check its main page with help of playwright mcp and make and show a screenshot
 
 # COMMON rules
 
