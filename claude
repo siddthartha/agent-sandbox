@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Share the host's trusted ssh hosts read-only: GitHub's keys are baked into
+# the image (claude.Dockerfile), this covers every other server the host
+# already trusts. Guarded, because bind-mounting a missing file makes docker
+# create a directory at that path on the host and break ssh there.
+extra_mounts=()
+if [ -f "$HOME/.ssh/known_hosts" ]; then
+  extra_mounts+=(-v "$HOME/.ssh/known_hosts:/home/node/.ssh/known_hosts:ro")
+fi
+
+# Run as the host user (not root) so files written to /workspace keep host
+# ownership. An explicit uid:gid drops the image's supplementary groups, so
+# the `docker` group from claude.Dockerfile is re-added for socket access.
+docker run -it --rm \
+  --user "$(id -u):$(id -g)" \
+  --group-add docker \
+  -v "$(pwd):/workspace" \
+  -v "$HOME/.claude:/home/node/.claude" \
+  -v "$HOME/.claude.json:/home/node/.claude.json" \
+  -v "$HOME/.gitconfig:/home/node/.gitconfig:ro" \
+  -v "$SSH_AUTH_SOCK:/tmp/ssh-agent.sock" \
+  -v "/var/run/docker.sock:/var/run/docker.sock" \
+  "${extra_mounts[@]}" \
+  -e SSH_AUTH_SOCK=/tmp/ssh-agent.sock \
+  -w /workspace \
+  claude-sandbox
