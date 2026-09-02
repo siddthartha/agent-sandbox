@@ -48,6 +48,7 @@ ARG DOCKER_GID=999
 RUN groupmod -o -g "${HOST_GID}" node \
     && usermod -o -u "${HOST_UID}" -g "${HOST_GID}" node \
     && chown -R "${HOST_UID}:${HOST_GID}" /home/node \
+    && install -d -o node -g node -m 700 /home/node/.ssh \
     && (getent group docker >/dev/null || groupadd -o -g "${DOCKER_GID}" docker) \
     && usermod -aG docker node
 
