@@ -11,6 +11,14 @@
         "/var/run/docker.sock:/var/run/docker.sock",
         "mcp-server-docker:latest"
       ]
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "sh",
+      "args": [
+        "-c",
+        "exec docker run -i --rm --init $(docker network ls -q --filter label=com.docker.compose.network | sed 's/^/--network /') mcr.microsoft.com/playwright/mcp"
+      ]
     }
   }
 }

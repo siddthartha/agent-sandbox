@@ -58,11 +58,21 @@ to call them as `claude` and `opencode`.
 GitHub's ssh host keys are pinned in the images, so `git push` works without
 a known_hosts prompt.
 
-`.mcp.json` registers the docker MCP server for Claude Code: it runs the
-`mcp-server-docker` image with the socket mounted, so the agent lists, starts
-and inspects containers through tools instead of shell. `./build.sh` builds
-that image too, from `github.com/ckreiling/mcp-server-docker`. Claude Code
-asks once per project before using servers from `.mcp.json`.
+`.mcp.json` registers two MCP servers for Claude Code, both run as throwaway
+containers through the mounted socket:
+
+- `mcp-server-docker` with the socket mounted, so the agent lists, starts and
+  inspects containers through tools instead of shell. `./build.sh` builds that
+  image too, from `github.com/ckreiling/mcp-server-docker`.
+- `playwright` from `mcr.microsoft.com/playwright/mcp`, a headless browser the
+  agent drives to open pages, click and take screenshots. The image is pulled
+  on first use. A small `sh -c` wrapper joins the container to every compose
+  network present at start (`docker network ls` filtered by the
+  `com.docker.compose.network` label), so the agent reaches running stacks by
+  service name. A stack started later is picked up after restarting the
+  server with `/mcp`.
+
+Claude Code asks once per project before using servers from `.mcp.json`.
 
 ## Qwen Code
 
