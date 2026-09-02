@@ -31,13 +31,19 @@ RUN printf '%s\n' \
 # the host uid/gid, plus a `docker` group with the host socket's gid so the
 # docker CLI reaches the daemon. The shadow tools allow duplicate ids (-o),
 # which busybox adduser/addgroup refuse; they are removed again afterwards.
+# The XDG tree is pre-created and owned by the user: the launcher bind-mounts
+# into ~/.config and ~/.local/share, and docker would create any missing
+# parent as root, leaving OpenCode unable to mkdir ~/.local/state next to it.
 ARG HOST_UID=1000
 ARG HOST_GID=1000
 ARG DOCKER_GID=999
 RUN apk add --no-cache --virtual .idtools shadow \
     && groupadd -o -g "${HOST_GID}" opencode \
     && useradd -o -m -u "${HOST_UID}" -g "${HOST_GID}" -d /home/opencode -s /bin/sh opencode \
-    && install -d -o opencode -g opencode -m 700 /home/opencode/.ssh \
+    && install -d -m 700 /home/opencode/.ssh \
+    && mkdir -p /home/opencode/.config/opencode /home/opencode/.local/share/opencode \
+        /home/opencode/.local/state /home/opencode/.cache \
+    && chown -R opencode:opencode /home/opencode \
     && groupadd -o -g "${DOCKER_GID}" docker \
     && usermod -aG docker opencode \
     && apk del .idtools
