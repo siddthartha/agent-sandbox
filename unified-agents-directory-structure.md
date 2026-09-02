@@ -35,7 +35,9 @@ project/
 ├── .agents/
 │   ├── agents/<name>.md           subagents, one file each
 │   └── skills/<name>/SKILL.md     skills, one directory each
-├── .claude -> .agents             Claude Code, whole directory
+├── .claude/
+│   ├── agents -> ../.agents/agents
+│   └── skills -> ../.agents/skills
 ├── .opencode/
 │   └── agents -> ../.agents/agents   skills need no link, see below
 └── .qwen/
@@ -43,13 +45,12 @@ project/
     └── skills -> ../.agents/skills
 ```
 
-`.claude` is a link to the whole `.agents/` directory, so Claude Code's own
-files (`settings.json`, `settings.local.json`, `commands/`, `hooks/`) live in
-`.agents/` too. The other agents only look at `agents/` and `skills/` there and
-ignore the rest. The personal `settings.local.json` is ignored by git under its
-real path, `.agents/settings.local.json`. There is no `.codex/` directory:
-Codex reads `AGENTS.md` and `.agents/skills` natively and has no markdown
-subagents. `llms.txt` is omitted; `AGENTS.md` is the project summary here.
+Every agent directory links only `agents` and `skills`, so each agent's own
+files (for Claude Code: `settings.json`, `settings.local.json`, `commands/`,
+`hooks/`) stay in its own directory and out of the shared store. There is no
+`.codex/` directory: Codex reads `AGENTS.md` and `.agents/skills` natively and
+has no markdown subagents. `llms.txt` is omitted; `AGENTS.md` is the project
+summary here.
 
 ## Who reads what
 
@@ -57,7 +58,7 @@ Verified against each project's documentation on 2026-09-02.
 
 | Agent | Instructions | Subagents | Skills | MCP servers |
 |---|---|---|---|---|
-| Claude Code | `CLAUDE.md` (link) | `.claude/agents` (via `.claude` link) | `.claude/skills` (via `.claude` link) | `.mcp.json` |
+| Claude Code | `CLAUDE.md` (link) | `.claude/agents` (link) | `.claude/skills` (link) | `.mcp.json` |
 | OpenCode | `AGENTS.md` (native, `CLAUDE.md` also read) | `.opencode/agents` (link) | `.agents/skills` (native, `.claude/skills` also scanned) | `opencode.json`, key `mcp` |
 | Codex | `AGENTS.md` (native) | none | `.agents/skills` (native) | `.codex/config.toml` or `~/.codex/config.toml`, table `mcp_servers` |
 | Qwen Code | `QWEN.md` (link) | `.qwen/agents` (link) | `.qwen/skills` (link) | `.qwen/settings.json`, key `mcpServers` |

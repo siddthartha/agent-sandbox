@@ -28,9 +28,8 @@ one Dockerfile.
 
 `AGENTS.md` is the single instructions file; `CLAUDE.md` and `QWEN.md` are
 symlinks to it. Subagents and skills live once under `.agents/`, which Codex
-and OpenCode read natively; `.claude` is a symlink to that directory, and
-`.opencode/` and `.qwen/` hold symlinks into it. The per-agent table is in
-`unified-agents-directory-structure.md`.
+and OpenCode read natively; `.claude/`, `.opencode/` and `.qwen/` hold symlinks
+into it. The per-agent table is in `unified-agents-directory-structure.md`.
 
 Add a skill as `.agents/skills/<name>/SKILL.md` and a subagent as
 `.agents/agents/<name>.md`. Keep the frontmatter to `name` and `description`:
