@@ -1,5 +1,11 @@
 # TODO
 
+## One launcher script for all agents
+
+- De-duplicate `claude`, `opencode` and `codex`: the optional-mount guards, the ssh-agent switch and the `docker run`
+  skeleton are identical, only the image, the home mounts and the agent-specific flags differ. Keep one script and
+  select the agent from the name it was called by (`$0`), with `claude`, `opencode` and `codex` as symlinks to it.
+
 ## qwen: same sandbox setup as claude and opencode
 
 - `qwen.Dockerfile` on `ghcr.io/qwenlm/qwen-code` with git, ssh client, docker
