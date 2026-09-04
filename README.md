@@ -1,109 +1,121 @@
 # agent-sandbox
 
-Run a coding agent in a throwaway docker container against the current
-directory, as your own user, with git, ssh and docker available inside.
+> Agents must **always** run in an isolated environment.
 
-- The agent only sees the directory you start it from (mounted at
-  `/workspace`) and its own config from your home.
-- Files it writes are owned by you: the images are built with your uid/gid.
-- It can drive project containers through the host docker socket.
-- Nothing is installed on the host except docker.
+Run a coding agent in a throwaway docker container against the current directory.
+
+- The agent runs in a docker container, isolated by _Linux namespaces_ and _cgroups_, so it only sees the directory
+  you start it from, mounted as a volume at `/workspace`
+- Its config, auth, sessions and memory **come from your home directory** on the host (for example `~/.claude` or
+  `~/.opencode`)
+- **Rootless** and aligned with your host user: the images are built with your _uid_/_gid_, so every file the agent
+  writes is owned by you
+- It can freely drive any container on the host: the docker socket is mounted and the container user is in a `docker`
+  group with the same _gid_ as on the host
+- It can use SSH for any tool, `git` included, without seeing your keys: only the `ssh-agent` socket is forwarded
+- All command-line arguments pass through the launcher script to the agent's CLI in the container unchanged
 
 ## Build
+
+`build.sh` builds the images from scratch:
+
+- installs the tools the agent needs:
+  - `git`
+  - `curl`
+  - `ssh`
+  - `docker` CLI with `buildx` and `compose`
+- installs the latest version of the agent's CLI
+
+The script builds all targets or just one:
 
 ```bash
 ./build.sh            # claude-sandbox, opencode-sandbox, codex-sandbox and the docker MCP image
 ./build.sh opencode   # just one target
 ```
 
-Rebuild after any change to a Dockerfile or a launcher.
+## Agents
 
-## Claude Code
+Copy the launchers (`claude`, `opencode`, `codex`) to `~/bin` or any other directory on `PATH`.
+
+### Usage
 
 ```bash
-cd ~/work/some-project
-~/work/agent-sandbox/claude                    # interactive session
-~/work/agent-sandbox/claude --continue         # pick up the last session here
-~/work/agent-sandbox/claude --resume <id>      # a specific one
-~/work/agent-sandbox/claude -p "what does build.sh do"
+cd ~/workspace/some-project
+
+claude                    # interactive TUI session
+claude --continue         # pick up the last session here
+claude --resume <id>      # a specific one
+claude -p "what does build.sh do"
+
+opencode run "add a make target that runs the tests"
+opencode --model openai/gpt-5.1-codex
+
+codex exec "add a make target that runs the tests"
+codex --model gpt-5.1-codex
 ```
+
+### Claude Code
 
 Config, sessions and memory come from `~/.claude` and `~/.claude.json`.
 
-## OpenCode
+### OpenCode
 
-```bash
-cd ~/work/some-project
-~/work/agent-sandbox/opencode                  # interactive TUI
-~/work/agent-sandbox/opencode run "add a make target that runs the tests"
-~/work/agent-sandbox/opencode --model openai/gpt-5.1-codex
-```
+Config comes from `~/.opencode`, auth and sessions from `~/.local/share/opencode`.
 
-Config comes from `~/.opencode`, auth and sessions from
-`~/.local/share/opencode`.
+### Codex
 
-## Codex
+Config, auth and sessions come from `~/.codex`.
 
-```bash
-cd ~/work/some-project
-~/work/agent-sandbox/codex                     # interactive TUI
-~/work/agent-sandbox/codex exec "add a make target that runs the tests"
-~/work/agent-sandbox/codex --model gpt-5.1-codex
-```
-
-Config, auth and sessions come from `~/.codex`. OpenAI publishes no image
-with the CLI (`ghcr.io/openai/codex-universal` is the cloud environment base
-without it), so `codex.Dockerfile` installs it from npm on `node:22-slim`,
-like Claude Code.
-
-Codex's own Linux sandbox is bubblewrap, which needs user namespaces; the
-docker default seccomp profile denies those inside the container. The
-launcher therefore starts Codex with `-c sandbox_mode=danger-full-access`:
-the container is the sandbox. Your own `--sandbox`, `--full-auto` or
-`--dangerously-bypass-approvals-and-sandbox` flags still win, and the
-approval policy is untouched.
-
-Every argument goes to the agent CLI unchanged. Put this directory on `PATH`
-to call them as `claude`, `opencode` and `codex`.
+> Codex's own Linux sandbox (bubblewrap) needs user namespaces, which docker's default seccomp profile denies inside
+> the container. The launcher therefore starts Codex with `-c sandbox_mode=danger-full-access`: the container is the
+> sandbox. Your own `--sandbox`, `--full-auto` or `--dangerously-bypass-approvals-and-sandbox` flags still win, and the
+> approval policy is untouched.
 
 ## What the container gets
 
 | Host | Container | Mode |
 |---|---|---|
-| current directory | `/workspace` | rw |
-| `~/.gitconfig` | `~/.gitconfig` | ro |
+| current directory | `/workspace` | RW |
+| `~/.gitconfig` | `~/.gitconfig` | RO |
 | ssh-agent socket | `/tmp/ssh-agent.sock` | no keys are copied |
-| `~/.ssh/known_hosts` | `~/.ssh/known_hosts` | ro, only if it exists |
-| `/var/run/docker.sock` | same path | docker CLI and compose |
+| `~/.ssh/known_hosts` | `~/.ssh/known_hosts` | RO, only if it exists |
+| `/var/run/docker.sock` | `/var/run/docker.sock` | docker CLI and compose |
 
-GitHub's ssh host keys are pinned in the images, so `git push` works without
-a known_hosts prompt.
+GitHub's ssh host keys are pinned in the images, so `git push` works without a known_hosts prompt.
 
-`.mcp.json` registers two MCP servers for Claude Code, both run as throwaway
-containers through the mounted socket:
+## The containered-agent skill
 
-- `mcp-server-docker` with the socket mounted, so the agent lists, starts and
-  inspects containers through tools instead of shell. `./build.sh` builds that
-  image too, from `github.com/ckreiling/mcp-server-docker`.
-- `playwright` from `mcr.microsoft.com/playwright/mcp`, a headless browser the
-  agent drives to open pages, click and take screenshots. The image is pulled
-  on first use. A small `sh -c` wrapper joins the container to every compose
-  network present at start (`docker network ls` filtered by the
-  `com.docker.compose.network` label), so the agent reaches running stacks by
-  service name. A stack started later is picked up after restarting the
-  server with `/mcp`.
+The **containered-agent** skill (`.agents/skills/containered-agent`) tells an agent how to work from inside the sandbox
+container, alongside whatever other environments it finds in the project's configuration: compose stacks, their
+runtimes and tools.
 
-Claude Code asks once per project before using servers from `.mcp.json`.
+Use it at the start of a session:
 
-## Qwen Code
+```
+/containered-agent      # Claude Code; other agents load it by description or on request
+```
 
-`qwen` is the older wrapper around `ghcr.io/qwenlm/qwen-code`, documented in
-`README-qwen-old.md`. Moving it to the same setup is in `TODO.md`.
+In this repo it is picked up automatically. For other projects, copy or link it to `~/.claude/skills/` (Claude Code)
+or `~/.agents/skills/` (OpenCode, Codex); both are read from your home in every project.
 
-## Agent configuration: one AGENTS.md for all
+## Pre-configured MCP servers
 
-Instructions, subagents and skills exist once and reach every agent through
-symlinks, so nothing is copied per tool:
+`.mcp.json` registers a few MCP servers for Claude Code; the other agents have their own format for that, see
+`unified-agents-directory-structure.md`. All of them run as throwaway containers through the mounted docker socket:
+
+- **Docker MCP** (`mcp-server-docker`) with the same socket mounted, so the agent lists, starts and inspects
+  containers through tools instead of the shell. `./build.sh` builds that image too, from
+  `github.com/ckreiling/mcp-server-docker`, since there is no official one
+- **Playwright MCP** (`playwright`) from `mcr.microsoft.com/playwright/mcp`, a _headless browser_ the agent drives to
+  open pages, click and _take screenshots_. The image is pulled on first use. A small `sh -c` wrapper joins the
+  container to every compose network present at start, so the agent reaches running stacks by service name through
+  docker's DNS
+
+> Claude Code asks once per project before using servers from `.mcp.json`.
+
+## One deduplicated folder structure for all agents
+
+Instructions, subagents and skills exist once and reach every agent through symlinks, so nothing is copied per tool:
 
 ```
 AGENTS.md                         instructions, the only real copy
@@ -116,26 +128,11 @@ QWEN.md   -> AGENTS.md            Qwen Code
 .qwen/{agents,skills}     -> ../.agents/...
 ```
 
-OpenCode and Codex read `AGENTS.md` and `.agents/skills` natively, so they
-need no links for those. To add a skill or subagent, create it under
-`.agents/` with only `name` and `description` in the frontmatter; the `tools`
-and `model` fields differ per agent and belong in each agent's own config.
-Per-agent table and rationale: `unified-agents-directory-structure.md`.
+OpenCode and Codex read `AGENTS.md` and `.agents/skills` natively, so they need no links for those.
 
-## The containered-agent skill
+> Agent-specific or model-dependent files are the exception to this shared layout and go into that agent's own
+> directory.
 
-`.agents/skills/containered-agent` tells an agent how to work from inside the
-sandbox: recognise that it runs in a container, learn the project's layout and
-deploy files, find the project's own containers through the docker socket and
-run builds and tests in those rather than in the sandbox, keep file ownership
-as it found it, and touch protected branches only through a pull request.
-
-Use it at the start of a session:
-
-```
-/containered-agent      # Claude Code; other agents load it by description or on request
-```
-
-In this repo it is picked up automatically. For other projects, copy or link
-it to `~/.claude/skills/` (Claude Code) or `~/.agents/skills/` (OpenCode,
-Codex); both are read from your home in every project.
+To add a skill or subagent, create it under `.agents/` with **only** `name` and `description` in the frontmatter; the
+`tools` and `model` fields differ per agent and belong in each agent's own config. Per-agent table and rationale:
+`unified-agents-directory-structure.md`.
