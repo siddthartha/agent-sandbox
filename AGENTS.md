@@ -28,6 +28,9 @@ the Dockerfiles.
   mounted home files and the forwarded ssh-agent socket only.
 - Quote every shell expansion. Guard optional bind mounts with a file test: a
   missing host path makes docker create a directory there.
+- The scripts run on Linux and macOS hosts: no GNU-only flags such as
+  `stat -c`, and the docker socket gid and the ssh-agent path differ per OS.
+  See the `uname` switches in `build.sh` and the launchers.
 - Everything in the repo is written in English. Commit messages are one short
   line.
 

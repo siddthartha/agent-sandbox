@@ -9,9 +9,9 @@ The steps below use `claude`; for OpenCode or Codex replace it with
 `opencode` or `codex` (the Dockerfile, image name and CLI are named alike).
 
 1. Build. On the host, `./build.sh [claude|opencode|codex]` reads the ids
-   itself.
-   From inside a sandbox `id -u` is the container user, so pass the host ids
-   explicitly and use a test tag:
+   itself (on macOS it bakes `DOCKER_GID=0`, because the socket is root:root
+   inside the VM). From inside a sandbox `id -u` is the container user, so
+   pass the host ids explicitly and use a test tag:
 
    ```bash
    docker build -f claude.Dockerfile -t claude-sandbox:test \

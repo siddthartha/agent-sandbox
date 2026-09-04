@@ -76,12 +76,25 @@ Config, auth and sessions come from `~/.codex`.
 | Host | Container | Mode |
 |---|---|---|
 | current directory | `/workspace` | RW |
-| `~/.gitconfig` | `~/.gitconfig` | RO |
-| ssh-agent socket | `/tmp/ssh-agent.sock` | no keys are copied |
+| `~/.gitconfig` | `~/.gitconfig` | RO, only if it exists |
+| ssh-agent socket | `/tmp/ssh-agent.sock` | no keys are copied, only if an agent runs |
 | `~/.ssh/known_hosts` | `~/.ssh/known_hosts` | RO, only if it exists |
 | `/var/run/docker.sock` | `/var/run/docker.sock` | docker CLI and compose |
 
 GitHub's ssh host keys are pinned in the images, so `git push` works without a known_hosts prompt.
+
+## macOS
+
+Works with Docker Desktop or OrbStack. Three things differ from Linux, and the scripts handle them:
+
+- the docker socket is proxied into the VM and is `root:root` inside containers, so `build.sh` bakes gid 0 instead of
+  the host socket's group (`DOCKER_GID=<gid> ./build.sh` overrides that for other runtimes)
+- a host Unix socket cannot be bind-mounted across the VM, so the launchers forward the ssh agent through
+  `/run/host-services/ssh-auth.sock`, which both runtimes provide
+- ownership of bind-mounted files is mapped by the VM's file sharing, so the uid/gid baked into the images changes
+  nothing there, and does no harm
+
+On Apple Silicon every image is pulled or built as arm64.
 
 ## The containered-agent skill
 

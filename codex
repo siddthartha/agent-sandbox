@@ -5,13 +5,30 @@
 # unwritable for the container user.
 mkdir -p "$HOME/.codex"
 
-# Share the host's trusted ssh hosts read-only: GitHub's keys are baked into
-# the image (codex.Dockerfile), this covers every other server the host
-# already trusts. Guarded, because bind-mounting a missing file makes docker
-# create a directory at that path on the host and break ssh there.
-extra_mounts=()
+# Optional host files, each mounted read-only and only if it exists, because
+# bind-mounting a missing path makes docker create a directory there on the
+# host and break the tool that owns it. ~/.gitconfig gives git the user's
+# identity; known_hosts covers every ssh server the host already trusts beyond
+# GitHub's keys baked into the image (codex.Dockerfile).
+extra_args=()
+if [ -f "$HOME/.gitconfig" ]; then
+  extra_args+=(-v "$HOME/.gitconfig:/home/node/.gitconfig:ro")
+fi
 if [ -f "$HOME/.ssh/known_hosts" ]; then
-  extra_mounts+=(-v "$HOME/.ssh/known_hosts:/home/node/.ssh/known_hosts:ro")
+  extra_args+=(-v "$HOME/.ssh/known_hosts:/home/node/.ssh/known_hosts:ro")
+fi
+
+# The ssh-agent socket, so git over ssh works without copying any key. On
+# Linux the host socket is mounted as is. On macOS a socket cannot cross the
+# VM boundary; Docker Desktop and OrbStack forward the host agent inside the
+# VM at /run/host-services/ssh-auth.sock instead. Skipped when no agent runs,
+# because docker rejects an empty mount source.
+agent_sock="$SSH_AUTH_SOCK"
+if [ "$(uname -s)" = Darwin ]; then
+  agent_sock=/run/host-services/ssh-auth.sock
+fi
+if [ -n "$agent_sock" ]; then
+  extra_args+=(-v "$agent_sock:/tmp/ssh-agent.sock" -e SSH_AUTH_SOCK=/tmp/ssh-agent.sock)
 fi
 
 # Run as the host user (not root) so files written to /workspace keep host
@@ -28,10 +45,7 @@ docker run -it --rm \
   --group-add docker \
   -v "$(pwd):/workspace" \
   -v "$HOME/.codex:/home/node/.codex" \
-  -v "$HOME/.gitconfig:/home/node/.gitconfig:ro" \
-  -v "$SSH_AUTH_SOCK:/tmp/ssh-agent.sock" \
   -v "/var/run/docker.sock:/var/run/docker.sock" \
-  "${extra_mounts[@]}" \
-  -e SSH_AUTH_SOCK=/tmp/ssh-agent.sock \
+  "${extra_args[@]}" \
   -w /workspace \
   codex-sandbox -c sandbox_mode=danger-full-access "$@"

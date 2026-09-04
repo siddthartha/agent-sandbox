@@ -16,6 +16,10 @@ changed script or Dockerfile and check, in this order:
    only from mounted home files and the forwarded ssh-agent socket.
 4. Image: pinned base image tag, apt lists removed, no auto-updater running in
    an ephemeral container.
+5. Portability: the scripts run on Linux and macOS hosts. No GNU-only flags
+   such as `stat -c`; the docker socket gid comes from the OS switch in
+   `build.sh`; on macOS the ssh agent is reached through
+   `/run/host-services/ssh-auth.sock`, never through `$SSH_AUTH_SOCK`.
 
 Report findings as a short list with file and line, worst first. Say plainly
 when there is nothing to report.
