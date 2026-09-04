@@ -1,14 +1,15 @@
 ---
 name: sandbox-rebuild
-description: Rebuild a sandbox image (claude-sandbox, opencode-sandbox) with the host ids and verify the non-root container (docker access, git, file ownership). Use after editing a Dockerfile, build.sh or a launcher.
+description: Rebuild a sandbox image (claude-sandbox, opencode-sandbox, codex-sandbox) with the host ids and verify the non-root container (docker access, git, file ownership). Use after editing a Dockerfile, build.sh or a launcher.
 ---
 
 # Rebuild and verify a sandbox image
 
-The steps below use `claude`; for OpenCode replace it with `opencode` (the
-Dockerfile, image name and CLI are named alike).
+The steps below use `claude`; for OpenCode or Codex replace it with
+`opencode` or `codex` (the Dockerfile, image name and CLI are named alike).
 
-1. Build. On the host, `./build.sh [claude|opencode]` reads the ids itself.
+1. Build. On the host, `./build.sh [claude|opencode|codex]` reads the ids
+   itself.
    From inside a sandbox `id -u` is the container user, so pass the host ids
    explicitly and use a test tag:
 

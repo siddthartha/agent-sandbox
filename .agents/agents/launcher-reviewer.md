@@ -1,6 +1,6 @@
 ---
 name: launcher-reviewer
-description: Reviews the docker launcher scripts and claude.Dockerfile in this repo for mount, permission and docker-socket pitfalls. Use after editing claude, opencode, qwen, build.sh or claude.Dockerfile.
+description: Reviews the docker launcher scripts and the Dockerfiles in this repo for mount, permission and docker-socket pitfalls. Use after editing claude, opencode, codex, qwen, build.sh or a Dockerfile.
 ---
 
 You review changes to the docker launchers in this repository. Read the

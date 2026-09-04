@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Codex keeps its config (config.toml), auth and sessions in ~/.codex on the
+# host. Create it first: docker creates a missing bind-mount source as root,
+# unwritable for the container user.
+mkdir -p "$HOME/.codex"
+
+# Share the host's trusted ssh hosts read-only: GitHub's keys are baked into
+# the image (codex.Dockerfile), this covers every other server the host
+# already trusts. Guarded, because bind-mounting a missing file makes docker
+# create a directory at that path on the host and break ssh there.
+extra_mounts=()
+if [ -f "$HOME/.ssh/known_hosts" ]; then
+  extra_mounts+=(-v "$HOME/.ssh/known_hosts:/home/node/.ssh/known_hosts:ro")
+fi
+
+# Run as the host user (not root) so files written to /workspace keep host
+# ownership. An explicit uid:gid drops the image's supplementary groups, so
+# the `docker` group from codex.Dockerfile is re-added for socket access.
+#
+# Codex's own sandbox (bubblewrap) needs user namespaces, which the docker
+# default seccomp profile denies, so it is switched off: the container is the
+# sandbox. A config override is used rather than --sandbox so that flags given
+# on the command line (--sandbox, --full-auto, --yolo) still take precedence.
+# Arguments are passed through to the codex CLI.
+docker run -it --rm \
+  --user "$(id -u):$(id -g)" \
+  --group-add docker \
+  -v "$(pwd):/workspace" \
+  -v "$HOME/.codex:/home/node/.codex" \
+  -v "$HOME/.gitconfig:/home/node/.gitconfig:ro" \
+  -v "$SSH_AUTH_SOCK:/tmp/ssh-agent.sock" \
+  -v "/var/run/docker.sock:/var/run/docker.sock" \
+  "${extra_mounts[@]}" \
+  -e SSH_AUTH_SOCK=/tmp/ssh-agent.sock \
+  -w /workspace \
+  codex-sandbox -c sandbox_mode=danger-full-access "$@"

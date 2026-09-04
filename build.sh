@@ -12,7 +12,7 @@ args=(
 
 build() {
   case "$1" in
-    claude|opencode)
+    claude|opencode|codex)
       docker build --file "$1.Dockerfile" -t "$1-sandbox" "${args[@]}" .
       ;;
     mcp-server-docker)
@@ -21,7 +21,7 @@ build() {
       docker build -t mcp-server-docker https://github.com/ckreiling/mcp-server-docker.git#main
       ;;
     *)
-      echo "unknown target: $1 (claude, opencode, mcp-server-docker)" >&2
+      echo "unknown target: $1 (claude, opencode, codex, mcp-server-docker)" >&2
       exit 1
       ;;
   esac
@@ -31,7 +31,7 @@ build() {
 # ./build.sh opencode           builds only the named targets
 targets=("$@")
 if [ ${#targets[@]} -eq 0 ]; then
-  targets=(claude opencode mcp-server-docker)
+  targets=(claude opencode codex mcp-server-docker)
 fi
 
 for target in "${targets[@]}"; do

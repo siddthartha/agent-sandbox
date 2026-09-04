@@ -7,13 +7,16 @@ from, mounted read-write into the container:
   `claude-sandbox` image, running as the host user with docker access.
 - `opencode` with `opencode.Dockerfile`: OpenCode in the locally built
   `opencode-sandbox` image, same setup on Alpine.
-- `build.sh`: builds both images with the host ids baked in.
+- `codex` with `codex.Dockerfile`: Codex in the locally built `codex-sandbox`
+  image, same setup as Claude Code; its own sandbox is switched off because
+  the container is the sandbox.
+- `build.sh`: builds the images with the host ids baked in.
 - `qwen`: Qwen Code from `ghcr.io/qwenlm/qwen-code`.
 
 Launcher arguments are passed through to the agent CLI in the container.
 
 There is no application runtime, test suite or CI here. Everything is bash plus
-one Dockerfile.
+the Dockerfiles.
 
 ## Working here
 

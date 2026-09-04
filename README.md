@@ -12,7 +12,7 @@ directory, as your own user, with git, ssh and docker available inside.
 ## Build
 
 ```bash
-./build.sh            # claude-sandbox, opencode-sandbox and the docker MCP image
+./build.sh            # claude-sandbox, opencode-sandbox, codex-sandbox and the docker MCP image
 ./build.sh opencode   # just one target
 ```
 
@@ -42,8 +42,29 @@ cd ~/work/some-project
 Config comes from `~/.opencode`, auth and sessions from
 `~/.local/share/opencode`.
 
+## Codex
+
+```bash
+cd ~/work/some-project
+~/work/agent-sandbox/codex                     # interactive TUI
+~/work/agent-sandbox/codex exec "add a make target that runs the tests"
+~/work/agent-sandbox/codex --model gpt-5.1-codex
+```
+
+Config, auth and sessions come from `~/.codex`. OpenAI publishes no image
+with the CLI (`ghcr.io/openai/codex-universal` is the cloud environment base
+without it), so `codex.Dockerfile` installs it from npm on `node:22-slim`,
+like Claude Code.
+
+Codex's own Linux sandbox is bubblewrap, which needs user namespaces; the
+docker default seccomp profile denies those inside the container. The
+launcher therefore starts Codex with `-c sandbox_mode=danger-full-access`:
+the container is the sandbox. Your own `--sandbox`, `--full-auto` or
+`--dangerously-bypass-approvals-and-sandbox` flags still win, and the
+approval policy is untouched.
+
 Every argument goes to the agent CLI unchanged. Put this directory on `PATH`
-to call them as `claude` and `opencode`.
+to call them as `claude`, `opencode` and `codex`.
 
 ## What the container gets
 
