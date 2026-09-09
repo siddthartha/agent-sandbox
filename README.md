@@ -1,13 +1,13 @@
 # agent-sandbox
 
-> Agents must **always** run in an isolated environment.
+> Agents must **always** run in an isolated environment. // (c) me
 
 Run a coding agent in a throwaway docker container against the current directory.
 
 - The agent runs in a docker container, isolated by _Linux namespaces_ and _cgroups_, so it only sees the directory
   you start it from, mounted as a volume at `/workspace`
-- Its config, auth, sessions and memory **come from your home directory** on the host (for example `~/.claude` or
-  `~/.opencode`)
+- Its _config_, _auth_, _sessions_ and _memory_ -- **come from your home directory** on the host system (for example
+  `~/.claude` or `~/.opencode`)
 - **Rootless** and aligned with your host user: the images are built with your _uid_/_gid_, so every file the agent
   writes is owned by you
 - It can freely drive any container on the host: the docker socket is mounted and the container user is in a `docker`
@@ -85,6 +85,14 @@ Config, auth and sessions come from `~/.codex`.
 | every compose network | joined at start | service names resolve; stacks started later are joined at runtime |
 
 GitHub's ssh host keys are pinned in the images, so `git push` works without a known_hosts prompt.
+
+The launchers pick networks by the `com.docker.compose.network` label, so any hand-made network gets joined the same
+way if it carries that label, for example one shared with MCP servers started outside compose:
+
+```bash
+docker network create --label com.docker.compose.network=mcp mcp
+docker run -d --name fly-mcp-server --network mcp flyio/flyctl mcp server --bind-addr 0.0.0.0 --port 9090 --stream
+```
 
 ## macOS
 
