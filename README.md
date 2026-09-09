@@ -12,6 +12,8 @@ Run a coding agent in a throwaway docker container against the current directory
   writes is owned by you
 - It can freely drive any container on the host: the docker socket is mounted and the container user is in a `docker`
   group with the same _gid_ as on the host
+- It reaches every running compose stack by service name: the launcher joins the sandbox to all compose networks
+  present at start, and the agent joins stacks started later itself, see the `containered-agent` skill
 - It can use SSH for any tool, `git` included, without seeing your keys: only the `ssh-agent` socket is forwarded
 - All command-line arguments pass through the launcher script to the agent's CLI in the container unchanged
 
@@ -80,6 +82,7 @@ Config, auth and sessions come from `~/.codex`.
 | ssh-agent socket | `/tmp/ssh-agent.sock` | no keys are copied, only if an agent runs |
 | `~/.ssh/known_hosts` | `~/.ssh/known_hosts` | RO, only if it exists |
 | `/var/run/docker.sock` | `/var/run/docker.sock` | docker CLI and compose |
+| every compose network | joined at start | service names resolve; stacks started later are joined at runtime |
 
 GitHub's ssh host keys are pinned in the images, so `git push` works without a known_hosts prompt.
 

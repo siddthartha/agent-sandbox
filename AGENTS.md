@@ -13,7 +13,10 @@ from, mounted read-write into the container:
 - `build.sh`: builds the images with the host ids baked in.
 - `qwen`: Qwen Code from `ghcr.io/qwenlm/qwen-code`.
 
-Launcher arguments are passed through to the agent CLI in the container.
+Launcher arguments are passed through to the agent CLI in the container. The
+launchers join the sandbox to every compose network present at start, so
+project services resolve by name; the `containered-agent` skill tells the
+agent how to join a stack started later.
 
 There is no application runtime, test suite or CI here. Everything is bash plus
 the Dockerfiles.
