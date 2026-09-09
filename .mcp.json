@@ -17,7 +17,7 @@
       "command": "sh",
       "args": [
         "-c",
-        "exec docker run -i --rm --init $(docker network ls -q --filter label=com.docker.compose.network | sed 's/^/--network /') mcr.microsoft.com/playwright/mcp"
+        "exec docker run -i --rm --init $(docker network ls --filter driver=bridge --format '{{.Name}}' | grep -vx bridge | sed 's/^/--network /') mcr.microsoft.com/playwright/mcp"
       ]
     }
   }

@@ -12,8 +12,8 @@ Run a coding agent in a throwaway docker container against the current directory
   writes is owned by you
 - It can freely drive any container on the host: the docker socket is mounted and the container user is in a `docker`
   group with the same _gid_ as on the host
-- It reaches every running compose stack by service name: the launcher joins the sandbox to all compose networks
-  present at start, and the agent joins stacks started later itself, see the `containered-agent` skill
+- It reaches every container on the host by name: the launcher joins the sandbox to all user-defined docker networks
+  present at start, and the agent joins networks created later itself, see the `containered-agent` skill
 - It can use SSH for any tool, `git` included, without seeing your keys: only the `ssh-agent` socket is forwarded
 - All command-line arguments pass through the launcher script to the agent's CLI in the container unchanged
 
@@ -82,15 +82,17 @@ Config, auth and sessions come from `~/.codex`.
 | ssh-agent socket | `/tmp/ssh-agent.sock` | no keys are copied, only if an agent runs |
 | `~/.ssh/known_hosts` | `~/.ssh/known_hosts` | RO, only if it exists |
 | `/var/run/docker.sock` | `/var/run/docker.sock` | docker CLI and compose |
-| every compose network | joined at start | service names resolve; stacks started later are joined at runtime |
+| every user-defined network | joined at start | container names resolve; networks created later are joined at runtime |
 
 GitHub's ssh host keys are pinned in the images, so `git push` works without a known_hosts prompt.
 
-The launchers pick networks by the `com.docker.compose.network` label, so any hand-made network gets joined the same
-way if it carries that label, for example one shared with MCP servers started outside compose:
+The launchers and the Playwright server join every user-defined bridge network, compose or hand-made, so a container
+started with `--network <name>` resolves by name from inside the sandbox. Only the default `bridge` is skipped: it has
+no name resolution, and docker refuses to combine it with user-defined networks. A container started without
+`--network` lands there and stays invisible, so give it a network:
 
 ```bash
-docker network create --label com.docker.compose.network=mcp mcp
+docker network create mcp
 docker run -d --name fly-mcp-server --network mcp flyio/flyctl mcp server --bind-addr 0.0.0.0 --port 9090 --stream
 ```
 
@@ -132,8 +134,8 @@ or `~/.agents/skills/` (OpenCode, Codex); both are read from your home in every 
   `github.com/ckreiling/mcp-server-docker`, since there is no official one
 - **Playwright MCP** (`playwright`) from `mcr.microsoft.com/playwright/mcp`, a _headless browser_ the agent drives to
   open pages, click and _take screenshots_. The image is pulled on first use. A small `sh -c` wrapper joins the
-  container to every compose network present at start, so the agent reaches running stacks by service name through
-  docker's DNS
+  container to every user-defined bridge network present at start, so the agent reaches running stacks by service
+  name through docker's DNS
 
 > Claude Code asks once per project before using servers from `.mcp.json`.
 

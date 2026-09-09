@@ -34,16 +34,19 @@ if [ -n "$agent_sock" ]; then
   extra_args+=(-v "$agent_sock:/tmp/ssh-agent.sock" -e SSH_AUTH_SOCK=/tmp/ssh-agent.sock)
 fi
 
-# Join every compose network present at start, so the project's services
-# resolve by name from inside the sandbox (the playwright server in .mcp.json
-# does the same). A stack started later is joined at runtime through the
-# socket, `docker network connect <network> "$(hostname)"`, as the
-# containered-agent skill says. Without any compose network docker uses the
-# default bridge.
+# Join every user-defined bridge network present at start, compose stacks and
+# hand-made ones alike, so any container on the host resolves by name from
+# inside the sandbox (the playwright server in .mcp.json does the same). This
+# is a personal machine, every stack on it is the user's own. The default
+# `bridge` is skipped: it has no name resolution and docker refuses to combine
+# it with user-defined networks. A network created later is joined at runtime
+# through the socket, `docker network connect <network> "$(hostname)"`, as the
+# containered-agent skill says.
 networks=()
 while read -r net; do
+  [ "$net" = bridge ] && continue
   networks+=(--network "$net")
-done < <(docker network ls -q --filter label=com.docker.compose.network)
+done < <(docker network ls --filter driver=bridge --format '{{.Name}}')
 
 # Run as the host user (not root) so files written to /workspace keep host
 # ownership. An explicit uid:gid drops the image's supplementary groups, so

@@ -14,9 +14,10 @@ from, mounted read-write into the container:
 - `qwen`: Qwen Code from `ghcr.io/qwenlm/qwen-code`.
 
 Launcher arguments are passed through to the agent CLI in the container. The
-launchers join the sandbox to every compose network present at start, so
-project services resolve by name; the `containered-agent` skill tells the
-agent how to join a stack started later.
+launchers join the sandbox to every user-defined docker network present at
+start (this is a personal machine, every stack on it is the user's own), so
+containers resolve by name; the `containered-agent` skill tells the agent how
+to join a network created later.
 
 There is no application runtime, test suite or CI here. Everything is bash plus
 the Dockerfiles.

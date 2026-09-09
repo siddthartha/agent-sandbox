@@ -17,8 +17,8 @@ IF YES THEN FOLLOW ALL THIS:
 - LOOK at high-level project structure
 - READ ALL "deploy" configuration files and detect project's environments, containers and main runtime flow in them (for example interpretators like php, python, nodejs, etc..) with it's versions
 - You HAVE `mcp-server-docker` for accessing all local containers AND mounted to host `/var/run/docker.sock`
-- Your container WAS ATTACHED at start to EVERY docker compose network that existed then, so project services resolve by their compose names (`postgres`, `api`, ...) right from your shell
-- DETECT compose networks that appeared later (`docker network ls --filter label=com.docker.compose.network` versus the networks in `docker inspect "$(hostname)"`) and ATTACH yourself at runtime: `docker network connect <network> "$(hostname)"` -- no restart needed. The Playwright MCP container does not follow: restart it (`/mcp`) to see a new network
+- Your container WAS ATTACHED at start to EVERY user-defined docker network that existed then (compose stacks and hand-made ones), so containers resolve by their names (`postgres`, `api`, `fly-mcp-server`, ...) right from your shell. Only the default `bridge` is not: it has no name resolution
+- DETECT networks that appeared later (`docker network ls --filter driver=bridge` minus `bridge`, versus the networks in `docker inspect "$(hostname)"`) and ATTACH yourself at runtime: `docker network connect <network> "$(hostname)"` -- no restart needed. The Playwright MCP container does not follow: restart it (`/mcp`) to see a new network
 - DETECT IF current project's containers are already running inside local docker using `mcp-server-docker`
 - ALL specific projects toolchain execution calls (tests or builds and so on) execute in corresponding container (which contains needed part of project and has its tools)
 - IF needed local container is already running do not recreate it without a reason -- just execute inside of it
