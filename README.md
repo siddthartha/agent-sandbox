@@ -26,6 +26,7 @@ Run a coding agent in a throwaway docker container against the current directory
   - `curl`
   - `ssh`
   - `docker` CLI with `buildx` and `compose`
+  - `gh`, the GitHub CLI
 - installs the latest version of the agent's CLI
 
 The script builds all targets or just one:
@@ -81,10 +82,15 @@ Config, auth and sessions come from `~/.codex`.
 | `~/.gitconfig` | `~/.gitconfig` | RO, only if it exists |
 | ssh-agent socket | `/tmp/ssh-agent.sock` | no keys are copied, only if an agent runs |
 | `~/.ssh/known_hosts` | `~/.ssh/known_hosts` | RO, only if it exists |
+| `~/.config/gh` | `~/.config/gh` | RO, only if it exists |
 | `/var/run/docker.sock` | `/var/run/docker.sock` | docker CLI and compose |
 | every user-defined network | joined at start | container names resolve; networks created later are joined at runtime |
 
-GitHub's ssh host keys are pinned in the images, so `git push` works without a known_hosts prompt.
+GitHub's ssh host keys are pinned in the images, so `git push` works without a known_hosts prompt. The GitHub CLI is
+installed and takes the host's login from `~/.config/gh`, so `gh pr` works from the sandbox and Claude Code's footer
+shows the PR badge for the current branch. The token has to be in that directory: on a desktop `gh auth login` puts it
+into the OS keyring, which the container cannot reach, so log in with `gh auth login --insecure-storage`. The directory
+is mounted read-only, the sandbox cannot change or drop the login.
 
 The launchers and the Playwright server join every user-defined bridge network, compose or hand-made, so a container
 started with `--network <name>` resolves by name from inside the sandbox. Only the default `bridge` is skipped: it has

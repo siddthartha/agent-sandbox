@@ -9,13 +9,18 @@ mkdir -p "$HOME/.opencode" "$HOME/.local/share/opencode"
 # bind-mounting a missing path makes docker create a directory there on the
 # host and break the tool that owns it. ~/.gitconfig gives git the user's
 # identity; known_hosts covers every ssh server the host already trusts beyond
-# GitHub's keys baked into the image (opencode.Dockerfile).
+# GitHub's keys baked into the image (opencode.Dockerfile); ~/.config/gh gives
+# the GitHub CLI the host's login. The token stays in the host file, nothing
+# is copied into the image.
 extra_args=()
 if [ -f "$HOME/.gitconfig" ]; then
   extra_args+=(-v "$HOME/.gitconfig:/home/opencode/.gitconfig:ro")
 fi
 if [ -f "$HOME/.ssh/known_hosts" ]; then
   extra_args+=(-v "$HOME/.ssh/known_hosts:/home/opencode/.ssh/known_hosts:ro")
+fi
+if [ -d "$HOME/.config/gh" ]; then
+  extra_args+=(-v "$HOME/.config/gh:/home/opencode/.config/gh:ro")
 fi
 
 # The ssh-agent socket, so git over ssh works without copying any key. On

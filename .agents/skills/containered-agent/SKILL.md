@@ -31,7 +31,7 @@ IF YES THEN FOLLOW ALL THIS:
 - DETECT is workspace a git worktree
 - DETECT remote repository provider (github, bitbucket, gitlab, or any others)
 - Use local `git` cli to observe current working tree state, branch, history and so on
-- Use corresponding mcp for repository provider (mcp github for github) to find a current repository, branch, observe state of CI/CD
+- Use corresponding mcp for repository provider (mcp github for github) to find a current repository, branch, observe state of CI/CD; the `gh` CLI is installed too and logged in as the host user when `~/.config/gh` exists on the host
 - DETECT branching model and protected branches
 - DO NOT touch protected branches -- only with opening PR via MCP
 

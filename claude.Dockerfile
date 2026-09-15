@@ -1,6 +1,10 @@
 FROM node:22-slim
 RUN npm install -g @anthropic-ai/claude-code
 
+# git and ssh for the repo, the docker CLI with compose for the host socket,
+# and the GitHub CLI (gh) from GitHub's own apt repo, as Debian's package lags
+# behind. gh reads the host's login from ~/.config/gh when the launcher mounts
+# it; Claude Code's footer PR badge needs gh too.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
@@ -14,11 +18,17 @@ RUN apt-get update \
     && chmod a+r /etc/apt/keyrings/docker.asc \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
         > /etc/apt/sources.list.d/docker.list \
+    && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+        -o /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+    && chmod a+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+        > /etc/apt/sources.list.d/github-cli.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         docker-ce-cli \
         docker-buildx-plugin \
         docker-compose-plugin \
+        gh \
     && rm -rf /var/lib/apt/lists/*
 
 # Trust GitHub's SSH host keys system-wide so git over ssh works without a
@@ -43,6 +53,9 @@ RUN printf '%s\n' \
 # writes to /workspace keep host ownership. build.sh passes the host ids:
 # `node` is remapped to the host uid/gid, and a `docker` group with the host
 # socket's gid lets the docker CLI and the docker MCP reach the daemon.
+# ~/.ssh and ~/.config are pre-created and owned by the user: the launcher
+# bind-mounts known_hosts and ~/.config/gh into them, and docker would create
+# a missing parent as root.
 ARG HOST_UID=1000
 ARG HOST_GID=1000
 ARG DOCKER_GID=999
@@ -50,12 +63,14 @@ RUN groupmod -o -g "${HOST_GID}" node \
     && usermod -o -u "${HOST_UID}" -g "${HOST_GID}" node \
     && chown -R "${HOST_UID}:${HOST_GID}" /home/node \
     && install -d -o node -g node -m 700 /home/node/.ssh \
+    && install -d -o node -g node /home/node/.config \
     && (getent group docker >/dev/null || groupadd -o -g "${DOCKER_GID}" docker) \
     && usermod -aG docker node
 
 # The container is ephemeral (--rm) and the npm install dir is root-owned:
-# updates come from rebuilding the image, not from the in-app updater.
-ENV DISABLE_AUTOUPDATER=1
+# updates come from rebuilding the image, not from the in-app updater. The
+# same goes for gh's update notice.
+ENV DISABLE_AUTOUPDATER=1 GH_NO_UPDATE_NOTIFIER=1
 
 WORKDIR /workspace
 ENTRYPOINT ["claude"]

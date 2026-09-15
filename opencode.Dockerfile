@@ -1,7 +1,9 @@
 FROM ghcr.io/anomalyco/opencode:latest
 
 # Same toolchain as claude.Dockerfile, on Alpine: git and ssh for the repo,
-# the docker CLI and compose plugin for the host socket.
+# the docker CLI and compose plugin for the host socket, and the GitHub CLI
+# (gh), which reads the host's login from ~/.config/gh when the launcher
+# mounts it.
 RUN apk add --no-cache \
         ca-certificates \
         curl \
@@ -9,7 +11,8 @@ RUN apk add --no-cache \
         openssh-client \
         docker-cli \
         docker-cli-buildx \
-        docker-cli-compose
+        docker-cli-compose \
+        github-cli
 
 # Trust GitHub's SSH host keys system-wide so git over ssh works without a
 # known_hosts prompt (the launcher forwards only the ssh-agent socket, not
@@ -50,8 +53,8 @@ RUN apk add --no-cache --virtual .idtools shadow \
     && apk del .idtools
 
 # The container is ephemeral (--rm): updates come from rebuilding the image,
-# not from the in-app update check.
-ENV OPENCODE_DISABLE_AUTOUPDATE=1
+# not from the in-app update check. The same goes for gh's update notice.
+ENV OPENCODE_DISABLE_AUTOUPDATE=1 GH_NO_UPDATE_NOTIFIER=1
 
 WORKDIR /workspace
 ENTRYPOINT ["opencode"]
