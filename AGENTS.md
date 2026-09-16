@@ -19,6 +19,12 @@ start (this is a personal machine, every stack on it is the user's own), so
 containers resolve by name; the `containered-agent` skill tells the agent how
 to join a network created later.
 
+The project is mounted at the same absolute path it has on the host, not at
+`/workspace`, and the launchers pass a matching `-w`. Anything that hands a
+path to the docker daemon, a compose file or a nested `docker run -v`, then
+needs no translation, because the daemon resolves bind-mount sources on the
+host.
+
 There is no application runtime, test suite or CI here. Everything is bash plus
 the Dockerfiles.
 

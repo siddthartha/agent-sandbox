@@ -13,7 +13,7 @@
   uid/gid in the docker group, and the `~/.qwen` and XDG dirs pre-created.
   Image name `qwen-sandbox`, built by `build.sh`.
 - Rewrite the `qwen` launcher in the claude/opencode style: `--user`,
-  `--group-add docker`, project at `/workspace`, `~/.qwen` mounted, gitconfig
+  `--group-add docker`, project at its host path, `~/.qwen` mounted, gitconfig
   read-only, ssh-agent socket, guarded known_hosts mount, arguments passed
   through to the qwen CLI.
 - Decide what happens to the old `--provider` / `--model` options

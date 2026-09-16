@@ -11,7 +11,7 @@ IF YES THEN FOLLOW ALL THIS:
 
 ## Environment isolation layer rules
 
-- You ARE running now inside of isolated docker container on user's host system with current folder (possible a project root folder) attached to `/workspace` as a read-write volume
+- You ARE running now inside of isolated docker container on user's host system with current folder (possible a project root folder) attached as a read-write volume AT THE SAME ABSOLUTE PATH it has on the host, so any path you see is a valid host path: bind mounts for containers you start need NO translation, pass the path as you see it
 - DETERMINE current container's OS and package manager
 - CHECK presence of `git`, `curl`, `docker`, `docker compose`
 - LOOK at high-level project structure

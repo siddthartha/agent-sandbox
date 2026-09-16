@@ -20,13 +20,14 @@ The steps below use `claude`; for OpenCode or Codex replace it with
    ```
 
 2. Verify as the launcher would run it. The images set the agent CLI as the
-   entrypoint, so override it for a shell. Bind-mount sources are host paths,
-   because the docker daemon resolves them, not the container:
+   entrypoint, so override it for a shell. The launcher mounts the project at
+   its host path, so use that one path on both sides of `-v` and in `-w`:
 
    ```bash
+   repo=<repo path on the host>
    docker run --rm --entrypoint sh --user 1000:1000 --group-add docker \
      -v /var/run/docker.sock:/var/run/docker.sock \
-     -v <repo path on the host>:/workspace -w /workspace \
+     -v "$repo:$repo" -w "$repo" \
      claude-sandbox:test -c 'id; docker ps -q | head -1; git status -sb;
        touch .t && ls -ln .t && rm .t; claude --version'
    ```

@@ -50,7 +50,15 @@ while read -r net; do
   networks+=(--network "$net")
 done < <(docker network ls --filter driver=bridge --format '{{.Name}}')
 
-# Run as the host user (not root) so files written to /workspace keep host
+# The project is mounted at the same absolute path it has on the host rather
+# than at a fixed /workspace. The docker socket makes this matter: the daemon
+# resolves every bind-mount source on the host, so a compose file or a nested
+# `docker run -v "$PWD/data:/data"` started from inside the sandbox would
+# otherwise name a path that exists only in the container, and docker would
+# create it on the host as an empty root-owned directory. Identical paths also
+# keep absolute paths in configs and `includeIf gitdir:` rules valid.
+#
+# Run as the host user (not root) so files written to the project keep host
 # ownership. An explicit uid:gid drops the image's supplementary groups, so
 # the `docker` group from codex.Dockerfile is re-added for socket access.
 #
@@ -63,9 +71,9 @@ docker run -it --rm \
   --user "$(id -u):$(id -g)" \
   --group-add docker \
   "${networks[@]}" \
-  -v "$(pwd):/workspace" \
+  -v "$PWD:$PWD" \
   -v "$HOME/.codex:/home/node/.codex" \
   -v "/var/run/docker.sock:/var/run/docker.sock" \
   "${extra_args[@]}" \
-  -w /workspace \
+  -w "$PWD" \
   codex-sandbox -c sandbox_mode=danger-full-access "$@"

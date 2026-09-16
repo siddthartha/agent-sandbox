@@ -5,7 +5,8 @@
 Run a coding agent in a throwaway docker container against the current directory.
 
 - The agent runs in a docker container, isolated by _Linux namespaces_ and _cgroups_, so it only sees the directory
-  you start it from, mounted as a volume at `/workspace`
+  you start it from, mounted at **the same absolute path it has on the host**, so absolute paths mean the same thing
+  on both sides
 - Its _config_, _auth_, _sessions_ and _memory_ -- **come from your home directory** on the host system (for example
   `~/.claude` or `~/.opencode`)
 - **Rootless** and aligned with your host user: the images are built with your _uid_/_gid_, so every file the agent
@@ -78,13 +79,20 @@ Config, auth and sessions come from `~/.codex`.
 
 | Host | Container | Mode |
 |---|---|---|
-| current directory | `/workspace` | RW |
+| current directory | the same absolute path | RW |
 | `~/.gitconfig` | `~/.gitconfig` | RO, only if it exists |
 | ssh-agent socket | `/tmp/ssh-agent.sock` | no keys are copied, only if an agent runs |
 | `~/.ssh/known_hosts` | `~/.ssh/known_hosts` | RO, only if it exists |
 | `~/.config/gh` | `~/.config/gh` | RO, only if it exists |
 | `/var/run/docker.sock` | `/var/run/docker.sock` | docker CLI and compose |
 | every user-defined network | joined at start | container names resolve; networks created later are joined at runtime |
+
+The project keeps the path it has on the host, `/home/you/work/project` inside the container as well as outside, rather
+than a fixed `/workspace`. The mounted docker socket is what makes this worth doing: the daemon resolves every
+bind-mount source on the host, so a compose file or a `docker run -v "$PWD/data:/data"` started from inside the sandbox
+names a directory that really exists. With a fixed mount point the same command would point at a path the host does not
+have, and docker would create it there as an empty root-owned directory. Absolute paths in configs and `includeIf
+gitdir:` rules in `~/.gitconfig` line up for the same reason.
 
 GitHub's ssh host keys are pinned in the images, so `git push` works without a known_hosts prompt. The GitHub CLI is
 installed and takes the host's login from `~/.config/gh`, so `gh pr` works from the sandbox and Claude Code's footer
@@ -104,7 +112,7 @@ docker run -d --name fly-mcp-server --network mcp flyio/flyctl mcp server --bind
 
 ## macOS
 
-Works with Docker Desktop or OrbStack. Three things differ from Linux, and the scripts handle them:
+Works with Docker Desktop or OrbStack. Four things differ from Linux, and the scripts handle them:
 
 - the docker socket is proxied into the VM and is `root:root` inside containers, so `build.sh` bakes gid 0 instead of
   the host socket's group (`DOCKER_GID=<gid> ./build.sh` overrides that for other runtimes)
@@ -112,6 +120,8 @@ Works with Docker Desktop or OrbStack. Three things differ from Linux, and the s
   `/run/host-services/ssh-auth.sock`, which both runtimes provide
 - ownership of bind-mounted files is mapped by the VM's file sharing, so the uid/gid baked into the images changes
   nothing there, and does no harm
+- the project path has to be on the runtime's file-sharing list, which matters more now that it is the mount point as
+  well as the source; `/Users` is shared out of the box by both runtimes, a project kept on another volume needs adding
 
 On Apple Silicon every image is pulled or built as arm64.
 

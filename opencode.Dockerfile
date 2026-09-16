@@ -30,7 +30,7 @@ RUN printf '%s\n' \
     && ssh-keygen -lf /etc/ssh/ssh_known_hosts
 
 # The launcher runs the container as the host user, not root, so files it
-# writes to /workspace keep host ownership. build.sh passes the host ids: the
+# writes to the project keep host ownership. build.sh passes the host ids: the
 # base image has no non-root account, so an `opencode` user is created with
 # the host uid/gid, plus a `docker` group with the host socket's gid so the
 # docker CLI reaches the daemon. The shadow tools allow duplicate ids (-o),
@@ -56,5 +56,7 @@ RUN apk add --no-cache --virtual .idtools shadow \
 # not from the in-app update check. The same goes for gh's update notice.
 ENV OPENCODE_DISABLE_AUTOUPDATE=1 GH_NO_UPDATE_NOTIFIER=1
 
+# Only a fallback for running the image without the launcher, which mounts the
+# project at its host path and passes a matching -w.
 WORKDIR /workspace
 ENTRYPOINT ["opencode"]

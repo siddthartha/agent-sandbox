@@ -50,7 +50,7 @@ RUN printf '%s\n' \
     && ssh-keygen -lf /etc/ssh/ssh_known_hosts
 
 # The launcher runs the container as the host user, not root, so files it
-# writes to /workspace keep host ownership. build.sh passes the host ids:
+# writes to the project keep host ownership. build.sh passes the host ids:
 # `node` is remapped to the host uid/gid, and a `docker` group with the host
 # socket's gid lets the docker CLI and the docker MCP reach the daemon.
 # ~/.ssh and ~/.config are pre-created and owned by the user: the launcher
@@ -72,5 +72,7 @@ RUN groupmod -o -g "${HOST_GID}" node \
 # same goes for gh's update notice.
 ENV DISABLE_AUTOUPDATER=1 GH_NO_UPDATE_NOTIFIER=1
 
+# Only a fallback for running the image without the launcher, which mounts the
+# project at its host path and passes a matching -w.
 WORKDIR /workspace
 ENTRYPOINT ["claude"]
